@@ -1,51 +1,69 @@
 import cv2
 import os
-
 from datetime import datetime
 
 from detector import VehicleDetector
 from tracker import LineCounter
-
+from plate_detector import PlateDetector
+from plate_reader import read_plate
+from color_detector import detect_color
 
 # ====================================
-# CONFIGURATION
+# CONFIG
 # ====================================
 
 VIDEO_PATH = "videos/input1.mp4"
 
 LINE_Y = 350
 
-
 # ====================================
-# CREATE FOLDERS
+# FOLDERS
 # ====================================
 
 os.makedirs("snapshots", exist_ok=True)
-
+os.makedirs("outputs", exist_ok=True)
 
 # ====================================
 # INITIALIZE
 # ====================================
 
-detector = VehicleDetector()
+vehicle_detector = VehicleDetector()
+plate_detector = PlateDetector()
 
-counter = LineCounter(line_y=LINE_Y)
+counter = LineCounter(LINE_Y)
 
 vehicle_records = {}
+
+# ====================================
+# VIDEO
+# ====================================
 
 cap = cv2.VideoCapture(VIDEO_PATH)
 
 if not cap.isOpened():
-
-    print("Error opening video")
-
+    print("Video open failed")
     exit()
 
 print("Video opened successfully")
 
+frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = cap.get(cv2.CAP_PROP_FPS)
+
+if fps <= 0:
+    fps = 20
+
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+
+video_writer = cv2.VideoWriter(
+    "outputs/output_detected.mp4",
+    fourcc,
+    fps,
+    (frame_width, frame_height)
+)
 
 # ====================================
-# MAIN LOOP
+# PROCESS VIDEO
 # ====================================
 
 while True:
@@ -53,24 +71,24 @@ while True:
     ret, frame = cap.read()
 
     if not ret:
-
         print("End of video reached")
-
         break
 
-    results = detector.track(frame)
+    results = vehicle_detector.track(frame)
 
-    # Draw Entry Line
+    annotated_frame = results[0].plot()
+
+    # Entry line
     cv2.line(
-        frame,
+        annotated_frame,
         (0, LINE_Y),
-        (frame.shape[1], LINE_Y),
+        (frame_width, LINE_Y),
         (0, 0, 255),
         3
     )
 
     cv2.putText(
-        frame,
+        annotated_frame,
         "ENTRY LINE",
         (20, LINE_Y - 10),
         cv2.FONT_HERSHEY_SIMPLEX,
@@ -82,9 +100,7 @@ while True:
     if results[0].boxes.id is not None:
 
         boxes = results[0].boxes.xyxy.cpu().numpy()
-
         ids = results[0].boxes.id.cpu().numpy()
-
         classes = results[0].boxes.cls.cpu().numpy()
 
         names = results[0].names
@@ -95,19 +111,20 @@ while True:
             classes
         ):
 
-            x1, y1, x2, y2 = map(int, box)
-
             track_id = int(track_id)
+
+            x1, y1, x2, y2 = map(
+                int,
+                box
+            )
 
             vehicle_type = names[int(cls_id)]
 
             center_x = int((x1 + x2) / 2)
-
             center_y = int((y1 + y2) / 2)
 
-            # Draw center point
             cv2.circle(
-                frame,
+                annotated_frame,
                 (center_x, center_y),
                 5,
                 (0, 255, 0),
@@ -125,20 +142,124 @@ while True:
                     "%Y-%m-%d_%H-%M-%S"
                 )
 
-                image_path = (
-                    f"snapshots/"
-                    f"vehicle_{track_id}_{timestamp}.jpg"
-                )
+                # ==========================
+                # VEHICLE CROP
+                # ==========================
 
                 vehicle_crop = frame[
                     max(0, y1):y2,
                     max(0, x1):x2
                 ]
 
-                cv2.imwrite(
-                    image_path,
+                if vehicle_crop.size == 0:
+                    continue
+
+                vehicle_color = detect_color(
                     vehicle_crop
                 )
+
+                vehicle_image = (
+                    f"snapshots/vehicle_{track_id}.jpg"
+                )
+
+                cv2.imwrite(
+                    vehicle_image,
+                    vehicle_crop
+                )
+
+                # ==========================
+                # PLATE DETECTION
+                # ==========================
+
+                plate_text = "UNKNOWN"
+
+                plate_image = None
+
+                debug_plate_path = None
+
+                plate_results = plate_detector.detect(
+                    vehicle_crop
+                )
+
+                if len(plate_results[0].boxes) > 0:
+
+                    pbox = (
+                        plate_results[0]
+                        .boxes
+                        .xyxy[0]
+                        .cpu()
+                        .numpy()
+                    )
+
+                    px1, py1, px2, py2 = map(
+                        int,
+                        pbox
+                    )
+
+                    # safety padding
+
+                    padding = 10
+
+                    px1 = max(
+                        0,
+                        px1 - padding
+                    )
+
+                    py1 = max(
+                        0,
+                        py1 - padding
+                    )
+
+                    px2 = min(
+                        vehicle_crop.shape[1],
+                        px2 + padding
+                    )
+
+                    py2 = min(
+                        vehicle_crop.shape[0],
+                        py2 + padding
+                    )
+
+                    plate_crop = vehicle_crop[
+                        py1:py2,
+                        px1:px2
+                    ]
+
+                    if plate_crop.size != 0:
+
+                        plate_image = (
+                            f"snapshots/plate_{track_id}.jpg"
+                        )
+
+                        cv2.imwrite(
+                            plate_image,
+                            plate_crop
+                        )
+
+                        debug_plate = cv2.resize(
+                            plate_crop,
+                            None,
+                            fx=4,
+                            fy=4,
+                            interpolation=cv2.INTER_CUBIC
+                        )
+
+                        debug_plate_path = (
+                            f"snapshots/debug_plate_{track_id}.jpg"
+                        )
+
+                        cv2.imwrite(
+                            debug_plate_path,
+                            debug_plate
+                        )
+
+                        plate_text = read_plate(
+                            plate_crop
+                        )
+
+                # ==========================
+                # STORE RECORD
+                # ==========================
 
                 vehicle_records[track_id] = {
 
@@ -146,12 +267,25 @@ while True:
 
                     "type": vehicle_type,
 
+                    "color": vehicle_color,
+
+                    "plate": plate_text,
+
                     "entry_time": timestamp,
 
-                    "image": image_path
+                    "vehicle_image": vehicle_image,
+
+                    "plate_image": plate_image,
+
+                    "debug_plate_image": debug_plate_path
                 }
 
-                print("\n========== ENTRY ==========")
+                # ==========================
+                # PRINT
+                # ==========================
+
+                print()
+                print("=" * 50)
 
                 print(
                     f"Vehicle ID : {track_id}"
@@ -162,62 +296,52 @@ while True:
                 )
 
                 print(
+                    f"Color      : {vehicle_color}"
+                )
+
+                print(
+                    f"Plate      : {plate_text}"
+                )
+
+                print(
                     f"Time       : {timestamp}"
                 )
 
                 print(
-                    f"Image      : {image_path}"
+                    f"Vehicle Img: {vehicle_image}"
                 )
 
-                print("===========================\n")
+                print(
+                    f"Plate Img  : {plate_image}"
+                )
 
-    annotated_frame = results[0].plot()
+                print(
+                    f"Debug Img  : {debug_plate_path}"
+                )
 
-    # Draw line again on final frame
-    cv2.line(
-        annotated_frame,
-        (0, LINE_Y),
-        (frame.shape[1], LINE_Y),
-        (0, 0, 255),
-        3
-    )
+                print("=" * 50)
 
-    cv2.putText(
-        annotated_frame,
-        "ENTRY LINE",
-        (20, LINE_Y - 10),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.8,
-        (0, 0, 255),
-        2
-    )
-
-    cv2.imshow(
-        "Vehicle Entry Monitoring",
+    # Save processed frame
+    video_writer.write(
         annotated_frame
     )
-
-    key = cv2.waitKey(30)
-
-    if key == 27:
-        break
-
-
-# ====================================
-# DISPLAY SAVED DATA
-# ====================================
-
-print("\nVehicle Records\n")
-
-for vehicle_id, data in vehicle_records.items():
-
-    print(data)
-
 
 # ====================================
 # CLEANUP
 # ====================================
 
+video_writer.release()
 cap.release()
 
-cv2.destroyAllWindows()
+# ====================================
+# FINAL REPORT
+# ====================================
+
+print("\nFINAL VEHICLE RECORDS\n")
+
+for vehicle_id, data in vehicle_records.items():
+    print(data)
+
+print(
+    "\nSaved Video: outputs/output_detected.mp4"
+)
