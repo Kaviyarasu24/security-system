@@ -6,7 +6,7 @@ class LineCounter:
 
         self.previous_positions = {}
 
-        self.crossed = set()
+        self.entered = set()
 
     def check_crossing(self, track_id, center_y):
 
@@ -19,12 +19,12 @@ class LineCounter:
 
         self.previous_positions[track_id] = center_y
 
-        if track_id in self.crossed:
+        if track_id in self.entered:
             return None
 
         if previous_y < self.line_y and center_y >= self.line_y:
 
-            self.crossed.add(track_id)
+            self.entered.add(track_id)
 
             return "ENTRY"
 
