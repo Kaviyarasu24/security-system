@@ -10,19 +10,19 @@ def format_entry_time(val):
 	if val is None:
 		return None
 	if isinstance(val, datetime):
-		return val.strftime("%d:%m:%Y  %I:%M:%S  %p")
+		return val.strftime("%d %B %Y  %I:%M:%S  %p")
 	if isinstance(val, str):
 		# try known input formats
 		for fmt in ("%Y-%m-%d_%H-%M-%S", "%Y-%m-%d %H:%M:%S"):
 			try:
 				dt = datetime.strptime(val, fmt)
-				return dt.strftime("%d:%m:%Y  %I:%M:%S  %p")
+				return dt.strftime("%d %B %Y  %I:%M:%S  %p")
 			except Exception:
 				continue
 		try:
 			# try ISO parse
 			dt = datetime.fromisoformat(val)
-			return dt.strftime("%d:%m:%Y  %I:%M:%S  %p")
+			return dt.strftime("%d %B %Y  %I:%M:%S  %p")
 		except Exception:
 			return val
 	return val
