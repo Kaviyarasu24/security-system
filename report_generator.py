@@ -1,4 +1,7 @@
 import os
+import io
+from datetime import datetime
+
 import pandas as pd
 
 
@@ -48,28 +51,28 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 	df = df[cols]
 
 	# Write CSV
-	df.to_csv(csv_path, index=False)
+	try:
+		df.to_csv(csv_path, index=False)
+	except Exception:
+		# ignore CSV errors
+		pass
 
-	# Write Excel
+	# Write Excel (simple sheet, without images)
+	excel_written = None
 	try:
 		df.to_excel(excel_path, index=False)
+		excel_written = excel_path
 	except Exception:
-		# If openpyxl not available or fails, skip Excel but still return CSV
-		excel_path = None
+		excel_written = None
 
-	return {"csv": csv_path, "excel": excel_path}
+	return {"csv": csv_path, "excel": excel_written}
 
 
 def append_daily_excel(vehicle_records, date_str=None, excel_dir="outputs"):
-	"""Append vehicle_records to a daily Excel file named DD_MM_YYYY.xlsx.
-
-	- If the file exists, read it and append new rows.
-	- If not, create a new Excel file with the data.
+	"""Append vehicle_records to a daily Excel file named DD_MM_YYYY.xlsx, embedding images.
 
 	Returns the path to the Excel file written, or None on failure.
 	"""
-
-	from datetime import datetime
 
 	if date_str is None:
 		date_str = datetime.now().strftime("%d_%m_%Y")
@@ -114,23 +117,76 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="outputs"):
 	df_new = df_new[cols]
 
 	try:
+		# Lazy imports for optional dependencies
+		from openpyxl import load_workbook, Workbook
+		from openpyxl.drawing.image import Image as XLImage
+		from PIL import Image as PILImage
+
 		if os.path.exists(excel_path):
-			# Read existing and append
 			try:
-				df_existing = pd.read_excel(excel_path)
+				wb = load_workbook(excel_path)
+				ws = wb.active
+				start_row = ws.max_row + 1
 			except Exception:
-				# If the existing file is corrupt or unreadable, overwrite
-				df_existing = pd.DataFrame(columns=cols)
-
-			# Concatenate
-			df_concat = pd.concat([df_existing, df_new], ignore_index=True)
-
-			# Write back (overwrite)
-			df_concat.to_excel(excel_path, index=False)
+				wb = Workbook()
+				ws = wb.active
+				# write header
+				for idx, h in enumerate(cols, start=1):
+					ws.cell(row=1, column=idx, value=h)
+				start_row = 2
 		else:
-			# New file
-			df_new.to_excel(excel_path, index=False)
+			wb = Workbook()
+			ws = wb.active
+			# write header
+			for idx, h in enumerate(cols, start=1):
+				ws.cell(row=1, column=idx, value=h)
 
+			start_row = 2
+
+		def insert_image(path, row, col_index):
+			if not path:
+				return
+			if not os.path.exists(path):
+				return
+			try:
+				pil_img = PILImage.open(path)
+				# Resize to reasonable thumbnail
+				max_w, max_h = 320, 180
+				w, h = pil_img.size
+				scale = min(max_w / w, max_h / h, 1.0)
+				new_w = int(w * scale)
+				new_h = int(h * scale)
+				if scale < 1.0:
+					pil_img = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
+
+				bio = io.BytesIO()
+				pil_img.save(bio, format="PNG")
+				bio.seek(0)
+
+				img = XLImage(bio)
+				anchor = ws.cell(row=row, column=col_index).coordinate
+				ws.add_image(img, anchor)
+				ws.row_dimensions[row].height = max(40, int(new_h * 0.75))
+			except Exception:
+				return
+
+		# Append rows with embedded images
+		row_idx = start_row
+		for _, rec in df_new.iterrows():
+			ws.cell(row=row_idx, column=1, value=rec.get("id"))
+			ws.cell(row=row_idx, column=2, value=rec.get("type"))
+			ws.cell(row=row_idx, column=3, value=rec.get("color"))
+			ws.cell(row=row_idx, column=4, value=rec.get("plate"))
+			ws.cell(row=row_idx, column=5, value=rec.get("entry_time"))
+
+			# embed images in columns 6,7,8
+			insert_image(rec.get("vehicle_image"), row_idx, 6)
+			insert_image(rec.get("plate_image"), row_idx, 7)
+			insert_image(rec.get("debug_plate_image"), row_idx, 8)
+
+			row_idx += 1
+
+		wb.save(excel_path)
 		return excel_path
 
 	except PermissionError:
