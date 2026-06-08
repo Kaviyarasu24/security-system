@@ -5,6 +5,29 @@ from datetime import datetime
 import pandas as pd
 
 
+def format_entry_time(val):
+	"""Format various entry_time values to DD:MM:YYYY  HH:MM:SS  AM/PM (12-hour)."""
+	if val is None:
+		return None
+	if isinstance(val, datetime):
+		return val.strftime("%d:%m:%Y  %I:%M:%S  %p")
+	if isinstance(val, str):
+		# try known input formats
+		for fmt in ("%Y-%m-%d_%H-%M-%S", "%Y-%m-%d %H:%M:%S"):
+			try:
+				dt = datetime.strptime(val, fmt)
+				return dt.strftime("%d:%m:%Y  %I:%M:%S  %p")
+			except Exception:
+				continue
+		try:
+			# try ISO parse
+			dt = datetime.fromisoformat(val)
+			return dt.strftime("%d:%m:%Y  %I:%M:%S  %p")
+		except Exception:
+			return val
+	return val
+
+
 def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", excel_path="outputs/vehicle_report.xlsx"):
 	"""Generate CSV and Excel reports from vehicle_records.
 
@@ -47,6 +70,10 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 			df[c] = None
 
 	df = df[cols]
+
+	# Normalize entry_time to requested format
+	if "entry_time" in df.columns:
+		df["entry_time"] = df["entry_time"].apply(format_entry_time)
 
 	# Write CSV
 	try:
@@ -111,6 +138,10 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="outputs"):
 			df_new[c] = None
 
 	df_new = df_new[cols]
+
+	# Normalize entry_time for new records as well
+	if "entry_time" in df_new.columns:
+		df_new["entry_time"] = df_new["entry_time"].apply(format_entry_time)
 
 	try:
 		# Lazy imports for optional dependencies
