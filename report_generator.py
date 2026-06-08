@@ -120,6 +120,7 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="outputs"):
 		# Lazy imports for optional dependencies
 		from openpyxl import load_workbook, Workbook
 		from openpyxl.drawing.image import Image as XLImage
+		from openpyxl.utils import get_column_letter
 		from PIL import Image as PILImage
 
 		if os.path.exists(excel_path):
@@ -166,7 +167,25 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="outputs"):
 				img = XLImage(bio)
 				anchor = ws.cell(row=row, column=col_index).coordinate
 				ws.add_image(img, anchor)
-				ws.row_dimensions[row].height = max(40, int(new_h * 0.75))
+
+				# Try to fit the image inside the cell by adjusting column width and row height
+				try:
+					col_letter = get_column_letter(col_index)
+					# Approximate conversion from pixels to Excel column width
+					# This is heuristic: width units ~= pixels * 0.14
+					desired_width = new_w * 0.14 + 2
+					current_width = ws.column_dimensions[col_letter].width or 0
+					if desired_width > current_width:
+						ws.column_dimensions[col_letter].width = desired_width
+
+					# Row height in points (approx): set proportional to image height
+					desired_height = max(40, int(new_h * 0.75))
+					current_height = ws.row_dimensions[row].height or 0
+					if desired_height > current_height:
+						ws.row_dimensions[row].height = desired_height
+				except Exception:
+					# ignore column/row sizing failures
+					pass
 			except Exception:
 				return
 
