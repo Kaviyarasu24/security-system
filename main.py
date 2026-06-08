@@ -7,7 +7,7 @@ from tracker import LineCounter
 from plate_detector import PlateDetector
 from plate_reader import read_plate
 from color_detector import detect_color
-from report_generator import generate_reports
+from report_generator import generate_reports, append_daily_excel
 
 # ====================================
 # CONFIG
@@ -344,14 +344,14 @@ for vehicle_id, data in vehicle_records.items():
     print(data)
 
 # Generate CSV / Excel report
-report_paths = generate_reports(vehicle_records)
+# Write daily Excel report (DD_MM_YYYY.xlsx). Appends if file exists.
+daily_path = append_daily_excel(vehicle_records)
 
 print(
     "\nSaved Video: outputs/output_detected.mp4"
 )
 
-if report_paths.get("csv"):
-    print(f"Saved CSV Report: {report_paths['csv']}")
-
-if report_paths.get("excel"):
-    print(f"Saved Excel Report: {report_paths['excel']}")
+if daily_path:
+    print(f"Saved Daily Excel Report: {daily_path}")
+else:
+    print("Failed to write daily Excel report (file may be open).")
