@@ -7,6 +7,7 @@ from tracker import LineCounter
 from plate_detector import PlateDetector
 from plate_reader import read_plate
 from color_detector import detect_color
+from report_generator import generate_reports
 
 # ====================================
 # CONFIG
@@ -342,6 +343,15 @@ print("\nFINAL VEHICLE RECORDS\n")
 for vehicle_id, data in vehicle_records.items():
     print(data)
 
+# Generate CSV / Excel report
+report_paths = generate_reports(vehicle_records)
+
 print(
     "\nSaved Video: outputs/output_detected.mp4"
 )
+
+if report_paths.get("csv"):
+    print(f"Saved CSV Report: {report_paths['csv']}")
+
+if report_paths.get("excel"):
+    print(f"Saved Excel Report: {report_paths['excel']}")

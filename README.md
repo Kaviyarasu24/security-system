@@ -80,7 +80,3 @@ python main.py
 - OCR accuracy depends on crop quality; improving plate detector or preprocessing may help.
 - For real-time or high-performance use, run on a machine with a GPU and install CUDA-enabled `torch`.
 - `report_generator.py` is currently empty — you can add reporting/export features (CSV, Excel) using `pandas`/`openpyxl`.
-
-## License
-
-This repository does not include an explicit license. Add a `LICENSE` file if you plan to publish or share.

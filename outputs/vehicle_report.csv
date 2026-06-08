@@ -1,0 +1,2 @@
+id,type,color,plate,entry_time,vehicle_image,plate_image,debug_plate_image
+1,car,BLUE,IN30A00707,2026-06-08_20-34-48,snapshots/vehicle_1.jpg,snapshots/plate_1.jpg,snapshots/debug_plate_1.jpg
