@@ -159,14 +159,18 @@ while True:
                     vehicle_crop
                 )
 
+                # create dated snapshots folder and sanitized type name
+                date_folder = datetime.now().strftime("%d_%m_%Y")
+                snapshots_dir = os.path.join("snapshots", date_folder)
+                os.makedirs(snapshots_dir, exist_ok=True)
+
+                safe_type = str(vehicle_type).replace(" ", "_")
+
                 vehicle_image = (
-                    f"snapshots/vehicle_{track_id}.jpg"
+                    f"{snapshots_dir}/{safe_type}_{track_id}_{timestamp}.jpg"
                 )
 
-                cv2.imwrite(
-                    vehicle_image,
-                    vehicle_crop
-                )
+                cv2.imwrite(vehicle_image, vehicle_crop)
 
                 # ==========================
                 # PLATE DETECTION
@@ -175,8 +179,6 @@ while True:
                 plate_text = "UNKNOWN"
 
                 plate_image = None
-
-                debug_plate_path = None
 
                 plate_results = plate_detector.detect(
                     vehicle_crop
@@ -229,30 +231,10 @@ while True:
                     if plate_crop.size != 0:
 
                         plate_image = (
-                            f"snapshots/plate_{track_id}.jpg"
+                            f"{snapshots_dir}/{track_id}_plate_image_{timestamp}.jpg"
                         )
 
-                        cv2.imwrite(
-                            plate_image,
-                            plate_crop
-                        )
-
-                        debug_plate = cv2.resize(
-                            plate_crop,
-                            None,
-                            fx=4,
-                            fy=4,
-                            interpolation=cv2.INTER_CUBIC
-                        )
-
-                        debug_plate_path = (
-                            f"snapshots/debug_plate_{track_id}.jpg"
-                        )
-
-                        cv2.imwrite(
-                            debug_plate_path,
-                            debug_plate
-                        )
+                        cv2.imwrite(plate_image, plate_crop)
 
                         plate_text = read_plate(
                             plate_crop
@@ -276,9 +258,7 @@ while True:
 
                     "vehicle_image": vehicle_image,
 
-                    "plate_image": plate_image,
-
-                    "debug_plate_image": debug_plate_path
+                    "plate_image": plate_image
                 }
 
                 # ==========================
@@ -316,9 +296,7 @@ while True:
                     f"Plate Img  : {plate_image}"
                 )
 
-                print(
-                    f"Debug Img  : {debug_plate_path}"
-                )
+                # debug plate images are no longer saved
 
                 print("=" * 50)
 
