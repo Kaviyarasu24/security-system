@@ -39,7 +39,7 @@ pip-wheel-metadata/
 .env.*
 
 # Data and outputs
-output/
+outputs/
 reports/
 videos/
 snapshots/
