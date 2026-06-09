@@ -93,7 +93,7 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 	return {"csv": csv_path, "excel": excel_written}
 
 
-def append_daily_excel(vehicle_records, date_str=None, excel_dir="outputs"):
+def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 	"""Append vehicle_records to a daily Excel file named DD_MM_YYYY.xlsx, embedding images.
 
 	Returns the path to the Excel file written, or None on failure.
