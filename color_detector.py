@@ -6,43 +6,87 @@ def detect_color(vehicle_crop):
 
     try:
 
+        height, width = vehicle_crop.shape[:2]
+
+        if height == 0 or width == 0:
+            return "UNKNOWN"
+
+        # Focus on the center area to reduce background influence.
+        top = int(height * 0.2)
+        bottom = int(height * 0.8)
+        left = int(width * 0.2)
+        right = int(width * 0.8)
+
+        center_crop = vehicle_crop[top:bottom, left:right]
+
+        if center_crop.size == 0:
+            center_crop = vehicle_crop
+
         resized = cv2.resize(
-            vehicle_crop,
-            (100, 100)
+            center_crop,
+            (160, 160)
         )
 
-        pixels = resized.reshape(
-            (-1, 3)
+        hsv = cv2.cvtColor(
+            resized,
+            cv2.COLOR_BGR2HSV
         )
 
-        avg_color = np.mean(
-            pixels,
-            axis=0
+        h, s, v = cv2.split(hsv)
+
+        # Remove weakly colored pixels so shadows and highlights influence less.
+        mask = (
+            (s > 35)
+            & (v > 45)
         )
 
-        b, g, r = avg_color
+        if np.count_nonzero(mask) < 50:
+            mean_v = float(np.mean(v))
 
-        brightness = (
-            r + g + b
-        ) / 3
+            if mean_v > 210:
+                return "WHITE"
 
-        if brightness > 180:
+            if mean_v < 55:
+                return "BLACK"
+
+            return "SILVER"
+
+        h_values = h[mask]
+        s_values = s[mask]
+        v_values = v[mask]
+
+        hue = float(np.median(h_values))
+        saturation = float(np.mean(s_values))
+        value = float(np.mean(v_values))
+
+        if value > 210 and saturation < 40:
             return "WHITE"
 
-        elif brightness < 60:
+        if value < 55:
             return "BLACK"
 
-        elif r > g and r > b:
+        if saturation < 40:
+            return "SILVER"
+
+        if hue < 10 or hue >= 170:
             return "RED"
 
-        elif g > r and g > b:
+        if hue < 25:
+            return "ORANGE"
+
+        if hue < 40:
+            return "YELLOW"
+
+        if hue < 85:
             return "GREEN"
 
-        elif b > r and b > g:
+        if hue < 130:
             return "BLUE"
 
-        else:
-            return "SILVER"
+        if hue < 170:
+            return "PURPLE"
+
+        return "SILVER"
 
     except Exception:
 

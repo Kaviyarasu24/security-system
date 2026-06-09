@@ -39,6 +39,10 @@ pip-wheel-metadata/
 .env.*
 
 # Data and outputs
+output/
+reports/
+videos/
+snapshots/
 
 # Model weights and large files
 models/*.pt
