@@ -261,6 +261,9 @@ while True:
                     "plate_image": plate_image
                 }
 
+                # update the daily Excel report immediately after each new record
+                daily_path = append_daily_excel({track_id: vehicle_records[track_id]})
+
                 # ==========================
                 # PRINT
                 # ==========================
@@ -268,6 +271,15 @@ while True:
                 print()
                 print("=" * 50)
 
+
+                if daily_path:
+                    print(
+                        f"Daily Excel Updated: {daily_path}"
+                    )
+                else:
+                    print(
+                        "Daily Excel update failed (file may be open)."
+                    )
                 print(
                     f"Vehicle ID : {track_id}"
                 )
@@ -321,15 +333,6 @@ print("\nFINAL VEHICLE RECORDS\n")
 for vehicle_id, data in vehicle_records.items():
     print(data)
 
-# Generate CSV / Excel report
-# Write daily Excel report (DD_MM_YYYY.xlsx). Appends if file exists.
-daily_path = append_daily_excel(vehicle_records)
-
 print(
     "\nSaved Video: outputs/output_detected.mp4"
 )
-
-if daily_path:
-    print(f"Saved Daily Excel Report: {daily_path}")
-else:
-    print("Failed to write daily Excel report (file may be open).")
