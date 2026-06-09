@@ -13,7 +13,7 @@ from report_generator import generate_reports, append_daily_excel
 # CONFIG
 # ====================================
 
-VIDEO_PATH = "videos/input1.mp4"
+VIDEO_PATH = "videos/input3.mp4"
 
 LINE_Y = 350
 
