@@ -2,15 +2,17 @@
 
 ## About
 
-This project is a lightweight vehicle detection and logging system that analyzes input video to detect, track, and record vehicles crossing an entry line. For each vehicle it captures: type (via YOLO), approximate color, license plate (if detected), timestamp, and cropped snapshots. It also generates an annotated output video.
+This project is a lightweight vehicle detection and logging system that analyzes CCTV footage or video input to detect, track, and record vehicles crossing an entry line. For each vehicle it captures: type (via YOLO), license plate (if detected), timestamp, and cropped snapshots. It also generates an annotated output video and updates a daily Excel report while the video is running.
 
 ## How it works
 
-- `main.py` opens a video (set `VIDEO_PATH`) and processes frames.
+- `main.py` opens a video or CCTV stream source (set `VIDEO_PATH`) and processes frames.
 - `detector.py` uses an Ultralytics YOLO model (`yolo11n.pt`) to detect and track vehicles.
 - `tracker.py` (`LineCounter`) tracks object center positions and flags vehicles that cross the configured entry line (set `LINE_Y`).
-- On an ENTRY event, `main.py` crops the vehicle, saves a vehicle snapshot, determines color via `color_detector.py`, attempts license plate detection with `plate_detector.py` (YOLO model in `models/license_plate_detector.pt`), and reads plates using `plate_reader.py` (EasyOCR).
-- Snapshots and debug crops are saved to `snapshots/`. An annotated video is written to `outputs/output_detected.mp4`.
+- On an ENTRY event, `main.py` crops the vehicle, saves a vehicle snapshot, attempts license plate detection with `plate_detector.py` (YOLO model in `models/license_plate_detector.pt`), and reads plates using `plate_reader.py` (EasyOCR).
+- Snapshots are saved inside a date-based folder under `snapshots/DD_MM_YYYY/`.
+- The daily Excel report is written to `reports/DD_MM_YYYY.xlsx` and is updated immediately whenever a new vehicle is recorded.
+- An annotated video is written to `outputs/output_detected.mp4`.
 
 ## Files of interest
 
@@ -18,8 +20,8 @@ This project is a lightweight vehicle detection and logging system that analyzes
 - `detector.py` — vehicle detector wrapper (uses `yolo11n.pt`).
 - `plate_detector.py` — license plate detector (uses `models/license_plate_detector.pt`).
 - `plate_reader.py` — OCR using EasyOCR to read plate text.
-- `color_detector.py` — simple average-color based color estimator.
 - `tracker.py` — line-crossing tracker (`LineCounter`).
+- `report_generator.py` — writes CSV/Excel reports; daily Excel reports are stored in `reports/`.
 - `requirements.txt` — Python dependencies (may require adding `easyocr` and `torch` depending on your system).
 
 ## Installation
@@ -69,14 +71,14 @@ python main.py
 
 3. Outputs produced:
 - Annotated video: `outputs/output_detected.mp4`
-- Vehicle crops: `snapshots/vehicle_<id>.jpg`
-- Plate crops: `snapshots/plate_<id>.jpg`
-- Debug plate crops: `snapshots/debug_plate_<id>.jpg`
-- Console printout with final `vehicle_records` summary.
+- Vehicle crops: `snapshots/DD_MM_YYYY/<vehicle_type>_<id>_<timestamp>.jpg`
+- Plate crops: `snapshots/DD_MM_YYYY/<id>_plate_image_<timestamp>.jpg`
+- Daily Excel report: `reports/DD_MM_YYYY.xlsx`
+- Console printout with the final `vehicle_records` summary.
 
 ## Notes & Tips
 
-- The color detector uses a simple average RGB heuristic and may be inaccurate for small or occluded crops.
+- Color detection has been removed from the current pipeline.
 - OCR accuracy depends on crop quality; improving plate detector or preprocessing may help.
 - For real-time or high-performance use, run on a machine with a GPU and install CUDA-enabled `torch`.
-- `report_generator.py` is currently empty — you can add reporting/export features (CSV, Excel) using `pandas`/`openpyxl`.
+- The daily Excel report is updated during runtime, so the file may stay open while CCTV is running.

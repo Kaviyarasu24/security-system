@@ -45,7 +45,6 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 		df = pd.DataFrame(columns=[
 			"id",
 			"type",
-			"color",
 			"plate",
 			"entry_time",
 			"vehicle_image",
@@ -58,7 +57,6 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 	cols = [
 		"id",
 		"type",
-		"color",
 		"plate",
 		"entry_time",
 		"vehicle_image",
@@ -113,7 +111,6 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 		df_new = pd.DataFrame(columns=[
 			"id",
 			"type",
-			"color",
 			"plate",
 			"entry_time",
 			"vehicle_image",
@@ -126,7 +123,6 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 	cols = [
 		"id",
 		"type",
-		"color",
 		"plate",
 		"entry_time",
 		"vehicle_image",
@@ -221,9 +217,8 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 		for _, rec in df_new.iterrows():
 			ws.cell(row=row_idx, column=1, value=rec.get("id"))
 			ws.cell(row=row_idx, column=2, value=rec.get("type"))
-			ws.cell(row=row_idx, column=3, value=rec.get("color"))
-			ws.cell(row=row_idx, column=4, value=rec.get("plate"))
-			ws.cell(row=row_idx, column=5, value=rec.get("entry_time"))
+			ws.cell(row=row_idx, column=3, value=rec.get("plate"))
+			ws.cell(row=row_idx, column=4, value=rec.get("entry_time"))
 
 			# embed images in columns 6 and 7
 			insert_image(rec.get("vehicle_image"), row_idx, 6)

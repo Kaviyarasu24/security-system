@@ -6,7 +6,6 @@ from detector import VehicleDetector
 from tracker import LineCounter
 from plate_detector import PlateDetector
 from plate_reader import read_plate
-from color_detector import detect_color
 from report_generator import generate_reports, append_daily_excel
 
 # ====================================
@@ -155,10 +154,6 @@ while True:
                 if vehicle_crop.size == 0:
                     continue
 
-                vehicle_color = detect_color(
-                    vehicle_crop
-                )
-
                 # create dated snapshots folder and sanitized type name
                 date_folder = datetime.now().strftime("%d_%m_%Y")
                 snapshots_dir = os.path.join("snapshots", date_folder)
@@ -250,8 +245,6 @@ while True:
 
                     "type": vehicle_type,
 
-                    "color": vehicle_color,
-
                     "plate": plate_text,
 
                     "entry_time": timestamp,
@@ -286,10 +279,6 @@ while True:
 
                 print(
                     f"Type       : {vehicle_type}"
-                )
-
-                print(
-                    f"Color      : {vehicle_color}"
                 )
 
                 print(
