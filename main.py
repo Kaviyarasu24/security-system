@@ -12,9 +12,14 @@ from report_generator import generate_reports, append_daily_excel
 # CONFIG
 # ====================================
 
-VIDEO_PATH = "videos/input3.mp4"
+VIDEO_PATH = "videos/input1.mp4"
 
 LINE_Y = 350
+
+# Minimum seconds between records of the same plate text.
+# Prevents duplicate entries when a vehicle is re-detected
+# or straddles the line. UNKNOWN plates are always recorded.
+DUPLICATE_PLATE_WINDOW_SECONDS = 60
 
 # ====================================
 # FOLDERS
@@ -33,6 +38,9 @@ plate_detector = PlateDetector()
 counter = LineCounter(LINE_Y)
 
 vehicle_records = {}
+
+# plate text -> datetime of last recorded entry (for duplicate guard)
+plate_last_seen = {}
 
 # ====================================
 # VIDEO
@@ -236,6 +244,24 @@ while True:
                         )
 
                 # ==========================
+                # DUPLICATE PLATE GUARD
+                # ==========================
+
+                now_dt = datetime.now()
+
+                if plate_text != "UNKNOWN":
+                    last_seen = plate_last_seen.get(plate_text)
+                    if last_seen is not None:
+                        elapsed = (now_dt - last_seen).total_seconds()
+                        if elapsed < DUPLICATE_PLATE_WINDOW_SECONDS:
+                            print(
+                                f"[DUPLICATE] Plate {plate_text} seen {elapsed:.0f}s ago — skipping"
+                            )
+                            continue
+
+                    plate_last_seen[plate_text] = now_dt
+
+                # ==========================
                 # STORE RECORD
                 # ==========================
 
@@ -306,12 +332,23 @@ while True:
         annotated_frame
     )
 
+    # ====================================
+    # LIVE PREVIEW
+    # ====================================
+
+    cv2.imshow("Security Feed", annotated_frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        print("Preview closed by user")
+        break
+
 # ====================================
 # CLEANUP
 # ====================================
 
 video_writer.release()
 cap.release()
+cv2.destroyAllWindows()
 
 # ====================================
 # FINAL REPORT
