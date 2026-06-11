@@ -14,7 +14,13 @@ from report_generator import generate_reports, append_daily_excel
 
 VIDEO_PATH = "videos/input1.mp4"
 
+# Entry line — vehicles crossing top→bottom trigger ENTRY
 LINE_Y = 350
+
+# Exit line — vehicles crossing bottom→top trigger EXIT
+# Place this above the entry line (smaller Y = higher on screen).
+# Adjust to match your camera's exit zone.
+EXIT_LINE_Y = 100
 
 # Minimum seconds between records of the same plate text.
 # Prevents duplicate entries when a vehicle is re-detected
@@ -35,7 +41,7 @@ os.makedirs("outputs", exist_ok=True)
 vehicle_detector = VehicleDetector()
 plate_detector = PlateDetector()
 
-counter = LineCounter(LINE_Y)
+counter = LineCounter(LINE_Y, EXIT_LINE_Y)
 
 vehicle_records = {}
 
@@ -86,7 +92,7 @@ while True:
 
     annotated_frame = results[0].plot()
 
-    # Entry line
+    # Entry line (red)
     cv2.line(
         annotated_frame,
         (0, LINE_Y),
@@ -102,6 +108,25 @@ while True:
         cv2.FONT_HERSHEY_SIMPLEX,
         0.8,
         (0, 0, 255),
+        2
+    )
+
+    # Exit line (green)
+    cv2.line(
+        annotated_frame,
+        (0, EXIT_LINE_Y),
+        (frame_width, EXIT_LINE_Y),
+        (0, 255, 0),
+        3
+    )
+
+    cv2.putText(
+        annotated_frame,
+        "EXIT LINE",
+        (20, EXIT_LINE_Y - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (0, 255, 0),
         2
     )
 
@@ -275,6 +300,10 @@ while True:
 
                     "entry_time": timestamp,
 
+                    "exit_time": None,
+
+                    "dwell_time": None,
+
                     "vehicle_image": vehicle_image,
 
                     "plate_image": plate_image
@@ -326,6 +355,63 @@ while True:
                 # debug plate images are no longer saved
 
                 print("=" * 50)
+
+            # ==========================
+            # EXIT EVENT
+            # ==========================
+
+            elif status == "EXIT":
+
+                exit_dt = datetime.now()
+                exit_timestamp = exit_dt.strftime("%Y-%m-%d_%H-%M-%S")
+
+                dwell_str = "UNKNOWN"
+
+                if track_id in vehicle_records:
+                    record = vehicle_records[track_id]
+
+                    # Parse entry_time back to datetime for delta calculation
+                    try:
+                        entry_dt = datetime.strptime(
+                            record["entry_time"],
+                            "%Y-%m-%d_%H-%M-%S"
+                        )
+                        dwell_seconds = (exit_dt - entry_dt).total_seconds()
+                        minutes = int(dwell_seconds // 60)
+                        seconds = int(dwell_seconds % 60)
+                        dwell_str = f"{minutes}m {seconds}s"
+                    except Exception:
+                        dwell_str = "UNKNOWN"
+
+                    # Update the existing record in-place
+                    record["exit_time"]  = exit_timestamp
+                    record["dwell_time"] = dwell_str
+
+                    # Re-write the Excel row with updated data
+                    daily_path = append_daily_excel(
+                        {track_id: record}
+                    )
+
+                    print()
+                    print("=" * 50)
+                    print(f"[EXIT] Vehicle ID : {track_id}")
+                    print(f"       Type       : {record.get('type')}")
+                    print(f"       Plate      : {record.get('plate')}")
+                    print(f"       EXIT Time  : {exit_timestamp}")
+                    print(f"       Dwell Time : {dwell_str}")
+                    if daily_path:
+                        print(f"       Excel      : {daily_path}")
+                    else:
+                        print("       Excel update failed (file may be open).")
+                    print("=" * 50)
+
+                else:
+                    # Vehicle exited without a recorded entry
+                    # (entered before video started, or entry line was missed)
+                    print()
+                    print("=" * 50)
+                    print(f"[EXIT] Vehicle ID {track_id} — no entry record found")
+                    print("=" * 50)
 
     # Save processed frame
     video_writer.write(

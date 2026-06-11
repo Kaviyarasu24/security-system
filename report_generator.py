@@ -47,6 +47,8 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 			"type",
 			"plate",
 			"entry_time",
+			"exit_time",
+			"dwell_time",
 			"vehicle_image",
 			"plate_image",
 		])
@@ -59,6 +61,8 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 		"type",
 		"plate",
 		"entry_time",
+		"exit_time",
+		"dwell_time",
 		"vehicle_image",
 		"plate_image",
 	]
@@ -72,6 +76,8 @@ def generate_reports(vehicle_records, csv_path="outputs/vehicle_report.csv", exc
 	# Normalize entry_time to requested format
 	if "entry_time" in df.columns:
 		df["entry_time"] = df["entry_time"].apply(format_entry_time)
+	if "exit_time" in df.columns:
+		df["exit_time"] = df["exit_time"].apply(format_entry_time)
 
 	# Write CSV
 	try:
@@ -113,6 +119,8 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 			"type",
 			"plate",
 			"entry_time",
+			"exit_time",
+			"dwell_time",
 			"vehicle_image",
 			"plate_image",
 		])
@@ -125,6 +133,8 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 		"type",
 		"plate",
 		"entry_time",
+		"exit_time",
+		"dwell_time",
 		"vehicle_image",
 		"plate_image",
 	]
@@ -138,6 +148,8 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 	# Normalize entry_time for new records as well
 	if "entry_time" in df_new.columns:
 		df_new["entry_time"] = df_new["entry_time"].apply(format_entry_time)
+	if "exit_time" in df_new.columns:
+		df_new["exit_time"] = df_new["exit_time"].apply(format_entry_time)
 
 	try:
 		# Lazy imports for optional dependencies
@@ -219,10 +231,12 @@ def append_daily_excel(vehicle_records, date_str=None, excel_dir="reports"):
 			ws.cell(row=row_idx, column=2, value=rec.get("type"))
 			ws.cell(row=row_idx, column=3, value=rec.get("plate"))
 			ws.cell(row=row_idx, column=4, value=rec.get("entry_time"))
+			ws.cell(row=row_idx, column=5, value=rec.get("exit_time"))
+			ws.cell(row=row_idx, column=6, value=rec.get("dwell_time"))
 
-			# embed images in columns 6 and 7
-			insert_image(rec.get("vehicle_image"), row_idx, 6)
-			insert_image(rec.get("plate_image"), row_idx, 7)
+			# embed images in columns 7 and 8
+			insert_image(rec.get("vehicle_image"), row_idx, 7)
+			insert_image(rec.get("plate_image"),   row_idx, 8)
 
 			row_idx += 1
 
